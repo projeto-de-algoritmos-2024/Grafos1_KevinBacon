@@ -53,23 +53,38 @@ def get_distance(G: Dict[str, List[str]], actorA: str, actorB: str) -> Optional[
 def get_kevin_bacon_number(g: Dict[str, List[str]], actor_name: str) -> Optional[Tuple[int, Dict[str, str]]]:
     return get_distance(g, actor_name, "Kevin Bacon")
 
+def convert_movie_id_name(connection, movie_id):
+    query = connection.execute("""
+    SELECT name
+    FROM film
+    WHERE filmId = ?
+    """, (movie_id,))
+
+    name = query.fetchone()
+    if name is None:
+        return None
+
+    return name[0]
+
 def show_kevin_bacon_number(G, actor_name:str):
-    result = get_kevin_bacon_number(G, actor_name)
-    if result is None:
-        print(f"No connection found for actor {actor_name}.", file=sys.stderr)
-    else:
-        distance, parent = result
-        print(f"Kevin Bacon number for {actor_name}: {distance}")
+    with sqlite3.connect(db_name) as con:
+        result = get_kevin_bacon_number(G, actor_name)
+        if result is None:
+            print(f"No connection found for actor {actor_name}.", file=sys.stderr)
+        else:
+            distance, parent = result
+            print(f"Kevin Bacon number for {actor_name}: {distance}")
 
-        # Trace the path
-        actor = "Kevin Bacon"
-        path = []
-        while actor in parent:
-            path.append(actor)
-            actor = parent[actor]
-        path.append(actor_name)
+            # Trace the path
+            actor = "Kevin Bacon"
+            path = []
+            while actor in parent:
+                movie_name = convert_movie_id_name(con, actor)
+                path.append(movie_name if movie_name is not None else actor)
+                actor = parent[actor]
+            path.append(actor_name)
 
-        print(" -> ".join(reversed(path)))
+            print(" -> ".join(reversed(path)))
 
 
 if __name__ == "__main__":
@@ -79,7 +94,6 @@ if __name__ == "__main__":
         SELECT name
         FROM actor
         ORDER BY RANDOM()
-        LIMIT 50
         """
         actors = con.execute(query).fetchall()
 
