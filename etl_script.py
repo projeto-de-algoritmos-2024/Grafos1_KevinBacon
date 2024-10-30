@@ -1,4 +1,6 @@
 import logging
+from dataclasses import dataclass
+
 import polars as pl
 
 db_name = 'imdb.db'
@@ -10,8 +12,7 @@ logging.basicConfig(level=logging.INFO,
                         logging.StreamHandler()
                     ])
 
-# TODO: add constraints
-
+@dataclass(frozen=True)
 
 def no_transform(path: str):
     return pl.read_csv(path, separator='\t', null_values=['\\N'], quote_char=None)
@@ -26,12 +27,12 @@ def transform_title_basics():
 
     genres_df = df.select(
         pl.col("tconst"),
-        pl.col("genres").str.split(',').alias("genres")
-    ).explode("genres")
+        pl.col("genres").str.split(',').alias("genre")
+    ).explode("genre")
 
     df = df.drop("genres")
 
-    return [df, genres_df]
+    return {'title_basics': df, 'genres': genres_df}
 
 def transform_title_akas():
     df = pl.read_csv('title_akas.tsv', separator='\t' ,null_values=['\\N'], quote_char=None)
@@ -39,18 +40,18 @@ def transform_title_akas():
     types_df = df.select(
         pl.col("titleId"),
         pl.col("ordering"),
-        pl.col("types").str.split(',').alias("types")
-    ).explode("types")
+        pl.col("types").str.split(',').alias("type")
+    ).explode("type")
 
     attributes_df = df.select(
         pl.col("titleId"),
         pl.col("ordering"),
-        pl.col("attributes").str.split(',').alias("attributes")
-    ).explode("attributes")
+        pl.col("attributes").str.split(',').alias("attribute")
+    ).explode("attribute")
 
     df = df.drop("attributes").drop("types")
 
-    return [df, types_df, attributes_df]
+    return {'title_akas': df, 'types': types_df, 'attributes': attributes_df}
 
 def transform_title_crew():
     df = pl.read_csv('title_crew.tsv', null_values=['\\N'], quote_char=None, separator='\t')
@@ -65,22 +66,22 @@ def transform_title_crew():
         pl.col("writers").str.split(',').alias("writers")
     ).explode("writers")
 
-    return [directors_df, writers_df]
+    return {'directors_crew': directors_df, 'writers_crew': writers_df}
 
 def transform_name_basics():
     df = pl.read_csv('name_basics.tsv', null_values=['\\N'], quote_char=None, separator='\t')
 
     professions = df.select(
         pl.col("nconst"),
-        pl.col("primaryProfession").str.split(',').alias("primaryProfession")
-    ).explode("primaryProfession")
+        pl.col("primaryProfession").str.split(',').alias("profession")
+    ).explode("profession")
 
     knownForTitles = df.select(
         pl.col("nconst"),
-        pl.col("knownForTitles").str.split(',').alias("knownForTitles")
-    ).explode("knownForTitles")
+        pl.col("knownForTitles").str.split(',').alias("title")
+    ).explode("title")
 
-    return [df, professions, knownForTitles]
+    return {'name_basics': df, 'professions': professions, 'knownForTitles': knownForTitles}
 
 def transform_title_principals():
     df = pl.read_csv('title_principals.tsv', null_values=['\\N'], quote_char=None, separator='\t')
@@ -88,11 +89,11 @@ def transform_title_principals():
     characters = df.select(
         pl.col("tconst"),
         pl.col("ordering"),
-        pl.col("characters").str.strip_chars("[]").str.split(',').alias("characters")
-    ).explode("characters")
+        pl.col("characters").str.strip_chars("[]").str.split(',').alias("character")
+    ).explode("character")
 
-    df = df.drop("characters")
+    df = df.drop("character")
 
-    return [df, characters]
+    return {'title_principals': df, 'characters': characters}
 
 print(transform_title_principals())
