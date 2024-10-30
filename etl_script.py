@@ -12,6 +12,10 @@ logging.basicConfig(level=logging.INFO,
 
 # TODO: add constraints
 
+
+def no_transform(path: str):
+    return pl.read_csv(path, separator='\t', null_values=['\\N'], quote_char=None)
+
 def transform_title_basics():
     df = pl.read_csv('title_basics.tsv', separator='\t', null_values=['\\N'], quote_char=None)
     df = df.with_columns(
@@ -77,3 +81,18 @@ def transform_name_basics():
     ).explode("knownForTitles")
 
     return [df, professions, knownForTitles]
+
+def transform_title_principals():
+    df = pl.read_csv('title_principals.tsv', null_values=['\\N'], quote_char=None, separator='\t')
+
+    characters = df.select(
+        pl.col("tconst"),
+        pl.col("ordering"),
+        pl.col("characters").str.strip_chars("[]").str.split(',').alias("characters")
+    ).explode("characters")
+
+    df = df.drop("characters")
+
+    return [df, characters]
+
+print(transform_title_principals())
