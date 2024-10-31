@@ -2,7 +2,7 @@ import logging
 import os.path
 import sqlite3
 import subprocess
-from dataclasses import dataclass
+import time
 from functools import wraps
 from typing import Callable
 
@@ -26,14 +26,14 @@ def count_lines(file_path):
     return line_count
 
 def insert_table(df: pl.DataFrame, table_name:str):
-    # TODO: write stuff in a single transaction
     df.write_database(table_name, f'sqlite:///{db_name}', if_table_exists='append')
 
-def batch_transform(path: str):
+def batch_insert(path: str):
     def decorator(transform_fn: Callable):
         @wraps(transform_fn)
         def wrapper(*args, **kwargs):
-            total_size = count_lines(path)
+            #remove header line
+            total_size = count_lines(path) - 1
             logging.info(f"Starting batch processing for file: {path}")
 
             reader = pl.read_csv_batched(path, separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
@@ -42,13 +42,24 @@ def batch_transform(path: str):
             batch = reader.next_batches(max_batches)
 
             while batch:
-                lines_read += batch_size*max_batches
+                df_batch = pl.concat(batch)
+                lines_read += len(df_batch)
                 progress = (lines_read / total_size) * 100
                 logging.info(f"Processing batch no. {batch_count} for table: {path}")
 
-                transformed_data = transform_fn(pl.concat(batch), *args, **kwargs)
+                transformed_data = transform_fn(df_batch, *args, **kwargs)
 
-                logging.info(f"Transformed batch no. {batch_count} for table: {path}, lines_processed: {progress:.2f}%, now inserting {len(transformed_data)} table(s)")
+                if progress != 100:
+                    logging.info(f"Transformed batch no. {batch_count} for table: {path}, lines_processed: {progress:.2f}%, now inserting {len(transformed_data)} table(s)")
+                else:
+                    logging.info(f"Transformed final batch for table {path}, all lines processed, now inserting {len(transformed_data)} table(s)")
+
+                if transformed_data is None:
+                    table_name = os.path.basename(path).split('.')[0]
+                    insert_table(df_batch, table_name)
+                    logging.info(f"Inserted batch no. {batch_count} for table: {table_name} in database")
+                    return
+
                 for sub_table_name, df in transformed_data.items():
                     insert_table(df, sub_table_name)
                     logging.info(f"Inserted batch no. {batch_count} for table: {sub_table_name}")
@@ -56,26 +67,23 @@ def batch_transform(path: str):
                 batch_count += 1
                 batch = reader.next_batches(batch_count)
 
-
             logging.info(f"Completed processing for file: {path}")
         return wrapper
     return decorator
 
+@batch_insert(path='title_ratings.tsv')
+def insert_title_ratings():
+    return None
 
-def insert_no_transforms():
-    no_transforms = ['title_ratings', 'title_episode', 'title_principals']
-    for table in no_transforms:
-        reader = pl.read_csv_batched(f'{table}.tsv', separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
-        batch_count = 1
-        batch = reader.next_batches(max_batches)
-        while batch:
-            logging.info(f"Inserting batch no. {batch_count} for table: {table}")
-            insert_table(pl.concat(batch), table)
-            logging.info(f"Finished inserting batch no. {batch_count} table: {table}")
-            batch_count += 1
-            batch = reader.next_batches(batch_count)
+@batch_insert(path='title_episode.tsv')
+def insert_title_ratings():
+    return None
 
-@batch_transform(path='title_akas.tsv')
+@batch_insert(path='title_principals.tsv')
+def insert_title_principals():
+    return None
+
+@batch_insert(path='title_akas.tsv')
 def transform_title_basics(df: pl.DataFrame):
     df = df.with_columns(
         pl.when(pl.col("isAdult") == 1).then(True)
@@ -91,7 +99,7 @@ def transform_title_basics(df: pl.DataFrame):
     df = df.drop("genres")
     return {'title_basics': df, 'genres': genres_df}
 
-@batch_transform(path='title_akas.tsv')
+@batch_insert(path='title_akas.tsv')
 def transform_title_akas(df: pl.DataFrame):
     types_df = df.select(
         pl.col("titleId"),
@@ -113,7 +121,7 @@ def transform_title_akas(df: pl.DataFrame):
         'attributes': attributes_df
     }
 
-@batch_transform(path='title_crew.tsv')
+@batch_insert(path='title_crew.tsv')
 def transform_title_crew(df: pl.DataFrame):
     directors_df = df.select(
         pl.col("tconst"),
@@ -127,7 +135,7 @@ def transform_title_crew(df: pl.DataFrame):
 
     return {'crew_directors': directors_df, 'crew_writers': writers_df}
 
-@batch_transform(path='name_basics.tsv')
+@batch_insert(path='name_basics.tsv')
 def transform_name_basics(df: pl.DataFrame):
     professions = df.select(
         pl.col("nconst"),
@@ -149,14 +157,17 @@ def transform_name_basics(df: pl.DataFrame):
 
 def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
     logging.info(f"Creating schema {db_name}")
-    if os.path.exists(db_name):
-        if overwrite:
-            os.remove(db_name)
-        else:
-            return False
+    time.sleep(1)
     with open('create_schema.sql', 'r') as schema:
         script = schema.read()
         conn.executescript(script)
         logging.info(f"Created schema {db_name}")
 
+with sqlite3.connect(db_name) as conn:
+    create_schema(conn)
+
 transform_title_akas()
+transform_title_crew()
+transform_title_basics()
+insert_title_principals()
+insert_title_ratings()
