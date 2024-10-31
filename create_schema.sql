@@ -19,8 +19,8 @@ CREATE TABLE genres (
 
 CREATE TABLE name_basics (
     nconst TEXT NOT NULL,
-    primaryName TEXT NOT NULL,
-    birthYear INTEGER NOT NULL,
+    primaryName TEXTgg,
+    birthYear INTEGER,
     deathYear INTEGER,
     CONSTRAINT name_basics_PK PRIMARY KEY (nconst)
 );
@@ -60,10 +60,10 @@ CREATE TABLE title_akas (
     titleId TEXT NOT NULL,
     ordering INTEGER NOT NULL,
     title TEXT NOT NULL,
-    region TEXT NOT NULL,
-    language TEXT NOT NULL,
+    region TEXT,
+    language TEXT,
     isOriginalTitle BOOLEAN,
-    CONSTRAINT title_akas_PK PRIMARY KEY (titleId),
+    CONSTRAINT title_akas_PK PRIMARY KEY (titleId, ordering),
     CONSTRAINT title_akas_title_basics_FK FOREIGN KEY (titleId) REFERENCES title_basics(tconst)
 );
 
@@ -72,7 +72,7 @@ CREATE TABLE types (
     ordering INTEGER NOT NULL,
     type TEXT NOT NULL,
     CONSTRAINT akas_types_UK UNIQUE (titleId, ordering, type),
-    CONSTRAINT akas_types_title_akas_FK FOREIGN KEY (titleId) REFERENCES title_akas(titleId)
+    CONSTRAINT akas_types_title_akas_FK FOREIGN KEY (titleId, ordering) REFERENCES title_akas(titleId, ordering)
 );
 
 CREATE TABLE attributes (
@@ -80,7 +80,7 @@ CREATE TABLE attributes (
     ordering INTEGER NOT NULL,
     attribute TEXT NOT NULL,
     CONSTRAINT akas_attributes_UK UNIQUE(titleId, ordering, attribute),
-    CONSTRAINT akas_attributes_title_akas_FK FOREIGN KEY (titleId) REFERENCES title_akas(titleId)
+    CONSTRAINT akas_attributes_title_akas_FK FOREIGN KEY (titleId, ordering) REFERENCES title_akas(titleId, ordering)
 );
 
 CREATE TABLE title_episode (
@@ -100,7 +100,7 @@ CREATE TABLE title_principals (
     category TEXT NOT NULL,
     job TEXT,
     characters TEXT,
-    CONSTRAINT title_principals_UK UNIQUE (tconst, nconst),
+    CONSTRAINT title_principals_UK UNIQUE (tconst, ordering, nconst),
     CONSTRAINT title_principals_tconst_FK FOREIGN KEY (tconst) REFERENCES title_basics(tconst),
     CONSTRAINT title_principals_nconst_FK FOREIGN KEY (nconst) REFERENCES name_basics(nconst)
 );

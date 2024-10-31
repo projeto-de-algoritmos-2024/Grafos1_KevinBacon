@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS title_ratings;
+DROP TABLE IF EXISTS title_principals;
+DROP TABLE IF EXISTS title_episode;
+DROP TABLE IF EXISTS attributes;
+DROP TABLE IF EXISTS types;
+DROP TABLE IF EXISTS title_akas;
+DROP TABLE IF EXISTS crew_writers;
+DROP TABLE IF EXISTS crew_directors;
+DROP TABLE IF EXISTS knownForTitles;
+DROP TABLE IF EXISTS primaryProfession;
+DROP TABLE IF EXISTS name_basics;
+DROP TABLE IF EXISTS genres;
+DROP TABLE IF EXISTS title_basics;

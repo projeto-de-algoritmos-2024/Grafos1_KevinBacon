@@ -2,6 +2,8 @@ import logging
 import os.path
 import sqlite3
 from dataclasses import dataclass
+from functools import wraps
+from typing import Callable
 
 import polars as pl
 
@@ -14,9 +16,49 @@ logging.basicConfig(level=logging.INFO,
                         logging.StreamHandler()
                     ])
 
+
+def insert_table(df: pl.DataFrame, table_name:str):
+    # TODO: write stuff in a single transaction
+    df.write_database(table_name, f'sqlite:///{db_name}', if_table_exists='append')
+
+def batch_transform(path: str):
+    batch_size = 150_000
+    max_batches = 15
+    def decorator(transform_fn: Callable):
+        @wraps(transform_fn)
+        def wrapper(*args, **kwargs):
+            logging.info(f"Starting batch processing for file: {path}")
+
+            reader = pl.read_csv_batched(path, separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
+            batch_count = 1
+            batch = reader.next_batches(max_batches, *args, **kwargs)
+
+            while batch:
+                logging.info(f"Processing batch no. {batch_count} for table: {path}")
+
+                transformed_data = transform_fn(pl.concat(batch))
+
+                logging.info(f"Transformed batch no. {batch_count} for table: {path}, now inserting {len(transformed_data)} table(s)")
+                for sub_table_name, df in transformed_data.items():
+                    insert_table(df, sub_table_name)
+                    logging.info(f"Inserted batch no. {batch_count} for table: {sub_table_name}")
+
+                batch_count += 1
+                batch = reader.next_batches(batch_count)
+
+
+            logging.info(f"Completed processing for file: {path}")
+        return wrapper
+    return decorator
+
 def no_transform(path: str):
     logging.info(f"No-transforming {path}")
     return pl.read_csv(path, separator='\t', null_values=['\\N'], quote_char=None)
+
+def insert_no_transforms():
+    no_transforms = ['title_ratings', 'title_episode']
+    for table in no_transforms:
+        no_transform(table+'.tsv')
 
 def transform_title_basics():
     logging.info(f"Transforming basic titles")
@@ -30,72 +72,71 @@ def transform_title_basics():
     genres_df = df.select(
         pl.col("tconst"),
         pl.col("genres").str.split(',').alias("genre")
-    ).explode("genre")
+    ).explode("genre").drop_nulls()
 
     df = df.drop("genres")
 
     logging.info(f"Transformed basic titles")
     return {'title_basics': df, 'genres': genres_df}
 
-def transform_title_akas():
-    logging.info(f"Transforming aka titles")
-    df = pl.read_csv('title_akas.tsv', separator='\t' ,null_values=['\\N'], quote_char=None)
-
+@batch_transform(path='title_akas.tsv')
+def transform_title_akas(df: pl.DataFrame):
     types_df = df.select(
         pl.col("titleId"),
         pl.col("ordering"),
         pl.col("types").str.split(',').alias("type")
-    ).explode("type")
+    ).explode("type").drop_nulls()
 
     attributes_df = df.select(
         pl.col("titleId"),
         pl.col("ordering"),
         pl.col("attributes").str.split(',').alias("attribute")
-    ).explode("attribute")
+    ).explode("attribute").drop_nulls()
 
     df = df.drop("attributes").drop("types")
 
-    logging.info(f"Transformed aka titles")
-    return {'title_akas': df, 'types': types_df, 'attributes': attributes_df}
+    return {
+        'title_akas': df,
+        'types': types_df,
+        'attributes': attributes_df
+    }
 
-def transform_title_crew():
-    logging.info(f"Transforming crew titles")
-    df = pl.read_csv('title_crew.tsv', null_values=['\\N'], quote_char=None, separator='\t')
-
+@batch_transform(path='title_crew.tsv')
+def transform_title_crew(df: pl.DataFrame):
     directors_df = df.select(
         pl.col("tconst"),
         pl.col("directors").str.split(',').alias("director")
-    ).explode("director")
+    ).explode("director").drop_nulls()
 
     writers_df = df.select(
         pl.col("tconst"),
         pl.col("writers").str.split(',').alias("writer")
-    ).explode("writer")
+    ).explode("writer").drop_nulls()
 
-    logging.info(f"Transformed crew titles")
     return {'crew_directors': directors_df, 'crew_writers': writers_df}
 
-def transform_name_basics():
-    logging.info(f"Transforming basic names")
-    df = pl.read_csv('name_basics.tsv', null_values=['\\N'], quote_char=None, separator='\t')
-
+@batch_transform(path='name_basics.tsv')
+def transform_name_basics(df: pl.DataFrame):
     professions = df.select(
         pl.col("nconst"),
         pl.col("primaryProfession").str.split(',').alias("profession")
-    ).explode("profession")
+    ).explode("profession").drop_nulls()
 
     knownForTitles = df.select(
         pl.col("nconst"),
         pl.col("knownForTitles").str.split(',').alias("title")
-    ).explode("title")
+    ).explode("title").drop_nulls()
 
-    logging.info(f"Transformed basic names")
-    return {'name_basics': df, 'professions': professions, 'knownForTitles': knownForTitles}
+    df = df.drop("primaryProfession").drop("knownForTitles")
+    return {
+        'name_basics': df,
+        'knownForTitles': knownForTitles,
+        'primaryProfession': professions
+    }
 
-def transform_title_principals():
-    logging.info(f"Transforming principal titles")
-    df = pl.read_csv('title_principals.tsv', null_values=['\\N'], quote_char=None, separator='\t')
 
+@batch_transform(path='title_principals.tsv')
+def transform_title_principals(df: pl.DataFrame):
     characters = df.select(
         pl.col("tconst"),
         pl.col("ordering"),
@@ -120,5 +161,4 @@ def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
         logging.info(f"Created schema {db_name}")
 
 # TODO: add df.to_sql for each table, append to existing schema
-with sqlite3.connect(db_name) as conn:
-    create_schema(conn)
+transform_name_basics()
