@@ -157,7 +157,6 @@ def transform_name_basics(df: pl.DataFrame):
 
 def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
     logging.info(f"Creating schema {db_name}")
-    time.sleep(1)
     with open('create_schema.sql', 'r') as schema:
         script = schema.read()
         conn.executescript(script)
