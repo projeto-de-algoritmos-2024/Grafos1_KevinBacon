@@ -1,6 +1,7 @@
 import logging
 import os.path
 import sqlite3
+import subprocess
 from dataclasses import dataclass
 from functools import wraps
 from typing import Callable
@@ -19,6 +20,11 @@ logging.basicConfig(level=logging.INFO,
 batch_size = 150_000
 max_batches = 15
 
+def count_lines(file_path):
+    result = subprocess.run(['wc', '-l', file_path], stdout=subprocess.PIPE, text=True)
+    line_count = int(result.stdout.split()[0])
+    return line_count
+
 def insert_table(df: pl.DataFrame, table_name:str):
     # TODO: write stuff in a single transaction
     df.write_database(table_name, f'sqlite:///{db_name}', if_table_exists='append')
@@ -27,18 +33,22 @@ def batch_transform(path: str):
     def decorator(transform_fn: Callable):
         @wraps(transform_fn)
         def wrapper(*args, **kwargs):
+            total_size = count_lines(path)
             logging.info(f"Starting batch processing for file: {path}")
 
             reader = pl.read_csv_batched(path, separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
+            lines_read = 0
             batch_count = 1
             batch = reader.next_batches(max_batches)
 
             while batch:
+                lines_read += batch_size*max_batches
+                progress = (lines_read / total_size) * 100
                 logging.info(f"Processing batch no. {batch_count} for table: {path}")
 
                 transformed_data = transform_fn(pl.concat(batch), *args, **kwargs)
 
-                logging.info(f"Transformed batch no. {batch_count} for table: {path}, now inserting {len(transformed_data)} table(s)")
+                logging.info(f"Transformed batch no. {batch_count} for table: {path}, lines_processed: {progress:.2f}%, now inserting {len(transformed_data)} table(s)")
                 for sub_table_name, df in transformed_data.items():
                     insert_table(df, sub_table_name)
                     logging.info(f"Inserted batch no. {batch_count} for table: {sub_table_name}")
@@ -65,9 +75,8 @@ def insert_no_transforms():
             batch_count += 1
             batch = reader.next_batches(batch_count)
 
-def transform_title_basics():
-    logging.info(f"Transforming basic titles")
-    df = pl.read_csv('title_basics.tsv', separator='\t', null_values=['\\N'], quote_char=None)
+@batch_transform(path='title_akas.tsv')
+def transform_title_basics(df: pl.DataFrame):
     df = df.with_columns(
         pl.when(pl.col("isAdult") == 1).then(True)
         .otherwise(False)
@@ -80,8 +89,6 @@ def transform_title_basics():
     ).explode("genre").drop_nulls()
 
     df = df.drop("genres")
-
-    logging.info(f"Transformed basic titles")
     return {'title_basics': df, 'genres': genres_df}
 
 @batch_transform(path='title_akas.tsv')
@@ -152,5 +159,4 @@ def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
         conn.executescript(script)
         logging.info(f"Created schema {db_name}")
 
-# TODO: add df.to_sql for each table, append to existing schema
-insert_no_transforms()
+transform_title_akas()
