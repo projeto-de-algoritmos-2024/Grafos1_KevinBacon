@@ -4,9 +4,9 @@ CREATE TABLE title_basics (
     primaryTitle TEXT NOT NULL,
     originalTitle TEXT NOT NULL,
     isAdult INTEGER NOT NULL,
-    startYear INTEGER NOT NULL,
+    startYear INTEGER,
     endYear INTEGER,
-    runtimeMinutes INTEGER NOT NULL,
+    runtimeMinutes INTEGER,
     CONSTRAINT title_basics_PK PRIMARY KEY (tconst)
 );
 
