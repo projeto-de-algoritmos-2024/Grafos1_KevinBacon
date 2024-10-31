@@ -163,7 +163,7 @@ def transform_name_basics(df: pl.DataFrame):
     }
 
 
-def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
+def create_schema(conn: sqlite3.Connection) -> bool:
     logging.info(f"Creating schema {db_name}")
     with open('create_schema.sql', 'r') as schema:
         script = schema.read()
