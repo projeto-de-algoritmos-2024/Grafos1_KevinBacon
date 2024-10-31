@@ -1,11 +1,9 @@
+import locale
 import logging
-import math
 import os.path
 import sqlite3
-import subprocess
 import time
 from functools import wraps
-from typing import Callable
 
 import polars as pl
 
@@ -17,42 +15,41 @@ logging.basicConfig(level=logging.INFO,
                         logging.FileHandler("app.log"),
                         logging.StreamHandler()
                     ])
+locale.setlocale(locale.LC_ALL, '')
+lines_per_chunk = 150_000
+chunks_per_batch = 15
 
-batch_size = 150_000
-max_batches = 15
-
-def count_lines(file_path):
-    result = subprocess.run(['wc', '-l', file_path], stdout=subprocess.PIPE, text=True)
-    line_count = int(result.stdout.split()[0])
-    return line_count
 
 def insert_table(df: pl.DataFrame, table_name:str):
     df.write_database(table_name, f'sqlite:///{db_name}', if_table_exists='append')
 
+def count_lines(file_path):
+    with open(file_path, 'r') as f:
+        return sum(1 for _ in f)
+
 def batch_insert(path: str):
-    def decorator(transform_fn: Callable):
+    def decorator(transform_fn):
         @wraps(transform_fn)
         def wrapper(*args, **kwargs):
             # Remove header line
             total_size = count_lines(path) - 1
             logging.info(f"Starting batch processing for file: {path}")
 
-            reader = pl.read_csv_batched(path, separator='\t', null_values=['\\N'], quote_char=None, batch_size=batch_size)
-            lines_read = 0
-            batch_count = 1
-            batch = reader.next_batches(max_batches)
-
-            start_time = time.time()
+            reader = pl.read_csv_batched(path, separator='\t', null_values=['\\N'], quote_char=None, batch_size=lines_per_chunk)
+            processed_lines = 0
             time_per_batch = []
+            start_time = time.time()
+
+            batch = reader.next_batches(chunks_per_batch)
 
             while batch:
                 df_batch = pl.concat(batch)
-                lines_read += len(df_batch)
-                progress = (lines_read / total_size) * 100
+                num_lines_in_batch = len(df_batch)
+                processed_lines += num_lines_in_batch
 
                 batch_start_time = time.time()
 
-                logging.info(f"Processing batch no. {batch_count} for table: {path}")
+                logging.info(f"Processing batch for table: {path}")
 
                 transformed_data = transform_fn(df_batch, *args, **kwargs)
 
@@ -66,29 +63,30 @@ def batch_insert(path: str):
                 batch_time = time.time() - batch_start_time
                 time_per_batch.append(batch_time)
 
-                avg_batch_time = sum(time_per_batch) / len(time_per_batch)
-                remaining_batches = math.ceil((total_size - lines_read) / (batch_size * max_batches))
-                eta = remaining_batches * avg_batch_time
-                eta_formatted = time.strftime('%H:%M:%S', time.gmtime(eta))
+                avg_time_per_line = sum(time_per_batch) / processed_lines if processed_lines > 0 else 0
+                remaining_lines = total_size - processed_lines
+                estimated_time_remaining = remaining_lines * avg_time_per_line
+                eta_formatted = time.strftime('%H:%M:%S', time.gmtime(estimated_time_remaining))
 
-                logging.info(f"Inserted batch no. {batch_count}, progress: {progress:.2f}%, ETA: {eta_formatted}")
+                logging.info(f"Processed {processed_lines:n}/{total_size:n} lines\tprogress: {(processed_lines / total_size) * 100:.2f}%\tETA: {eta_formatted}")
 
-                batch_count += 1
-                batch = reader.next_batches(batch_count)
+                batch = reader.next_batches(chunks_per_batch)
 
             logging.info(f"Completed processing for file: {path} in {time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time))}")
+
         return wrapper
     return decorator
+
 @batch_insert(path='title_ratings.tsv')
-def insert_title_ratings():
+def insert_title_ratings(df: pl.DataFrame):
     return None
 
 @batch_insert(path='title_episode.tsv')
-def insert_title_ratings():
+def insert_title_episode(df: pl.DataFrame):
     return None
 
 @batch_insert(path='title_principals.tsv')
-def insert_title_principals():
+def insert_title_principals(df: pl.DataFrame):
     return None
 
 @batch_insert(path='title_basics.tsv')
@@ -163,7 +161,7 @@ def transform_name_basics(df: pl.DataFrame):
     }
 
 
-def create_schema(conn: sqlite3.Connection) -> bool:
+def create_schema(conn: sqlite3.Connection):
     logging.info(f"Creating schema {db_name}")
     with open('create_schema.sql', 'r') as schema:
         script = schema.read()
