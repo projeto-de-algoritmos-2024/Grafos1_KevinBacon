@@ -16,14 +16,14 @@ logging.basicConfig(level=logging.INFO,
                         logging.StreamHandler()
                     ])
 
+batch_size = 150_000
+max_batches = 15
 
 def insert_table(df: pl.DataFrame, table_name:str):
     # TODO: write stuff in a single transaction
     df.write_database(table_name, f'sqlite:///{db_name}', if_table_exists='append')
 
 def batch_transform(path: str):
-    batch_size = 150_000
-    max_batches = 15
     def decorator(transform_fn: Callable):
         @wraps(transform_fn)
         def wrapper(*args, **kwargs):
@@ -31,12 +31,12 @@ def batch_transform(path: str):
 
             reader = pl.read_csv_batched(path, separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
             batch_count = 1
-            batch = reader.next_batches(max_batches, *args, **kwargs)
+            batch = reader.next_batches(max_batches)
 
             while batch:
                 logging.info(f"Processing batch no. {batch_count} for table: {path}")
 
-                transformed_data = transform_fn(pl.concat(batch))
+                transformed_data = transform_fn(pl.concat(batch), *args, **kwargs)
 
                 logging.info(f"Transformed batch no. {batch_count} for table: {path}, now inserting {len(transformed_data)} table(s)")
                 for sub_table_name, df in transformed_data.items():
@@ -51,14 +51,19 @@ def batch_transform(path: str):
         return wrapper
     return decorator
 
-def no_transform(path: str):
-    logging.info(f"No-transforming {path}")
-    return pl.read_csv(path, separator='\t', null_values=['\\N'], quote_char=None)
 
 def insert_no_transforms():
-    no_transforms = ['title_ratings', 'title_episode']
+    no_transforms = ['title_ratings', 'title_episode', 'title_principals']
     for table in no_transforms:
-        no_transform(table+'.tsv')
+        reader = pl.read_csv_batched(f'{table}.tsv', separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
+        batch_count = 1
+        batch = reader.next_batches(max_batches)
+        while batch:
+            logging.info(f"Inserting batch no. {batch_count} for table: {table}")
+            insert_table(pl.concat(batch), table)
+            logging.info(f"Finished inserting batch no. {batch_count} table: {table}")
+            batch_count += 1
+            batch = reader.next_batches(batch_count)
 
 def transform_title_basics():
     logging.info(f"Transforming basic titles")
@@ -135,19 +140,6 @@ def transform_name_basics(df: pl.DataFrame):
     }
 
 
-@batch_transform(path='title_principals.tsv')
-def transform_title_principals(df: pl.DataFrame):
-    characters = df.select(
-        pl.col("tconst"),
-        pl.col("ordering"),
-        pl.col("characters").str.strip_chars("[]").str.split(',').alias("character")
-    ).explode("character")
-
-    df = df.drop("character")
-
-    logging.info(f"Transformed principal titles")
-    return {'title_principals': df, 'characters': characters}
-
 def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
     logging.info(f"Creating schema {db_name}")
     if os.path.exists(db_name):
@@ -161,4 +153,4 @@ def create_schema(conn: sqlite3.Connection,overwrite: bool = True) -> bool:
         logging.info(f"Created schema {db_name}")
 
 # TODO: add df.to_sql for each table, append to existing schema
-transform_name_basics()
+insert_no_transforms()
