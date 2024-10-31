@@ -83,7 +83,7 @@ def insert_title_ratings():
 def insert_title_principals():
     return None
 
-@batch_insert(path='title_akas.tsv')
+@batch_insert(path='title_basics.tsv')
 def transform_title_basics(df: pl.DataFrame):
     df = df.with_columns(
         pl.when(pl.col("isAdult") == 1).then(True)
