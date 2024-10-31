@@ -1,4 +1,5 @@
 import logging
+import math
 import os.path
 import sqlite3
 import subprocess
@@ -32,45 +33,52 @@ def batch_insert(path: str):
     def decorator(transform_fn: Callable):
         @wraps(transform_fn)
         def wrapper(*args, **kwargs):
-            #remove header line
+            # Remove header line
             total_size = count_lines(path) - 1
             logging.info(f"Starting batch processing for file: {path}")
 
-            reader = pl.read_csv_batched(path, separator='\t' ,null_values=['\\N'], quote_char=None, batch_size=batch_size)
+            reader = pl.read_csv_batched(path, separator='\t', null_values=['\\N'], quote_char=None, batch_size=batch_size)
             lines_read = 0
             batch_count = 1
             batch = reader.next_batches(max_batches)
+
+            start_time = time.time()
+            time_per_batch = []
 
             while batch:
                 df_batch = pl.concat(batch)
                 lines_read += len(df_batch)
                 progress = (lines_read / total_size) * 100
+
+                batch_start_time = time.time()
+
                 logging.info(f"Processing batch no. {batch_count} for table: {path}")
 
                 transformed_data = transform_fn(df_batch, *args, **kwargs)
 
-                if progress != 100:
-                    logging.info(f"Transformed batch no. {batch_count} for table: {path}, lines_processed: {progress:.2f}%, now inserting {len(transformed_data)} table(s)")
-                else:
-                    logging.info(f"Transformed final batch for table {path}, all lines processed, now inserting {len(transformed_data)} table(s)")
-
                 if transformed_data is None:
                     table_name = os.path.basename(path).split('.')[0]
                     insert_table(df_batch, table_name)
-                    logging.info(f"Inserted batch no. {batch_count} for table: {table_name} in database")
-                    return
+                else:
+                    for sub_table_name, df in transformed_data.items():
+                        insert_table(df, sub_table_name)
 
-                for sub_table_name, df in transformed_data.items():
-                    insert_table(df, sub_table_name)
-                    logging.info(f"Inserted batch no. {batch_count} for table: {sub_table_name}")
+                batch_time = time.time() - batch_start_time
+                time_per_batch.append(batch_time)
+
+                avg_batch_time = sum(time_per_batch) / len(time_per_batch)
+                remaining_batches = math.ceil((total_size - lines_read) / (batch_size * max_batches))
+                eta = remaining_batches * avg_batch_time
+                eta_formatted = time.strftime('%H:%M:%S', time.gmtime(eta))
+
+                logging.info(f"Inserted batch no. {batch_count}, progress: {progress:.2f}%, ETA: {eta_formatted}")
 
                 batch_count += 1
                 batch = reader.next_batches(batch_count)
 
-            logging.info(f"Completed processing for file: {path}")
+            logging.info(f"Completed processing for file: {path} in {time.strftime('%H:%M:%S', time.gmtime(time.time() - start_time))}")
         return wrapper
     return decorator
-
 @batch_insert(path='title_ratings.tsv')
 def insert_title_ratings():
     return None
