@@ -17,7 +17,7 @@ db_name = 'imdb.db'
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[
-                        logging.FileHandler("app.log"),
+                        # logging.FileHandler("app.log"),
                         logging.StreamHandler()
                     ])
 locale.setlocale(locale.LC_ALL, '')
@@ -144,9 +144,10 @@ def create_schema(conn: sqlite3.Connection):
         conn.executescript(schema.read())
     logging.info(f"Created schema {db_name}")
 
+# TODO: create schema if not exists, recreate schema if already exists
 with tempfile.TemporaryDirectory(dir='./') as tmpdirname:
     for count, dataset in enumerate(datasets):
-        logging.info(f'Starting processing for dataset {count}/{len(datasets)}')
+        logging.info(f'Starting processing for dataset {count+1}/{len(datasets)}')
         path = download_and_decompress(dataset, tmpdirname)
         process_and_insert(path, dataset.transform_fn)
         logging.info(f'Completed processing for dataset {count}/{len(datasets)}')
