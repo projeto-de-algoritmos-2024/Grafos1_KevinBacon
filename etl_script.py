@@ -158,4 +158,4 @@ with tempfile.TemporaryDirectory(dir='./') as tmpdirname:
         logging.info(f'Starting processing for dataset {count+1}/{len(datasets)}')
         path = download_and_decompress(dataset, tmpdirname)
         process_and_insert(path, dataset.transform_fn)
-        logging.info(f'Completed processing for dataset {count}/{len(datasets)}')
+        logging.info(f'Completed processing for dataset {count+1}/{len(datasets)}')
