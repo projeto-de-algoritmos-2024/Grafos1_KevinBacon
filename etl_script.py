@@ -32,7 +32,7 @@ def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, *key_col
 
 def transform_title_basics(df: pl.DataFrame):
     return {
-        'genres' : split_attribute(df, "genres", "genre",  "nconst"),
+        'genres' : split_attribute(df, "genres", "genre",  "tconst"),
         'title_basics' : df.with_columns(
             pl.when(pl.col("isAdult") == 1)
             .then(True)
