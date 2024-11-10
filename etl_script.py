@@ -24,7 +24,7 @@ locale.setlocale(locale.LC_ALL, '')
 lines_per_chunk = 150_000
 chunks_per_batch = 15
 
-def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, key_cols: list[str]) -> pl.DataFrame:
+def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, *key_cols) -> pl.DataFrame:
     return df.select(
         pl.col(col_name).str.split(',').alias(new_col_name),
         *[pl.col(col_name) for col_name in key_cols]
@@ -32,25 +32,24 @@ def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, key_cols
 
 def transform_title_basics(df: pl.DataFrame):
     df = df.with_columns(pl.when(pl.col("isAdult") == 1).then(True).otherwise(False).alias("isAdult"))
-    genres_df = split_attribute(df, "genres", "genre",  ["nconst"])
+    genres_df = split_attribute(df, "genres", "genre",  "nconst")
     df = df.drop("genres")
     return {'title_basics': df, 'genres': genres_df}
 
 def transform_title_akas(df: pl.DataFrame):
-    key_cols = ['titleId', 'ordering']
-    types_df = split_attribute(df, "types", "type", key_cols)
-    attributes_df = split_attribute(df, "attributes", "attribute", key_cols)
+    types_df = split_attribute(df, "types", "type", 'titleId', 'ordering')
+    attributes_df = split_attribute(df, "attributes", "attribute", 'titleId', 'ordering')
     df = df.drop("attributes").drop("types")
     return {'title_akas': df, 'types': types_df, 'attributes': attributes_df}
 
 def transform_title_crew(df: pl.DataFrame):
-    directors_df = split_attribute(df, "directors", "director", ['tconst'])
-    writers_df = split_attribute(df, "writers", "writer", ['tconst'])
+    directors_df = split_attribute(df, "directors", "director", 'tconst')
+    writers_df = split_attribute(df, "writers", "writer", 'tconst')
     return {'crew_directors': directors_df, 'crew_writers': writers_df}
 
 def transform_name_basics(df: pl.DataFrame):
-    professions = split_attribute(df, "primaryProfession", "profession", ['nconst'])
-    known_for_titles = split_attribute(df, "knownForTitles", "title", ['nconst'])
+    professions = split_attribute(df, "primaryProfession", "profession", 'nconst')
+    known_for_titles = split_attribute(df, "knownForTitles", "title", 'nconst')
     df = df.drop("primaryProfession").drop("knownForTitles")
     return {'name_basics': df, 'knownForTitles': known_for_titles, 'primaryProfession': professions}
 
