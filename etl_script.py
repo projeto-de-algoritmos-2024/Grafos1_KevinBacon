@@ -167,3 +167,5 @@ with tempfile.TemporaryDirectory(dir='./') as tmpdirname:
         logging.info(f'Cleaning up file {path}...')
         os.remove(path)
         logging.info(f'Completed processing for dataset {count+1}/{len(datasets)}')
+
+logging.info(f'Finished ETL processing')
