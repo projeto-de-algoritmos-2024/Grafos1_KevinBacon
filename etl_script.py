@@ -17,7 +17,7 @@ db_name = 'imdb.db'
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[
-                        # logging.FileHandler("app.log"),
+                        logging.FileHandler("app.log"),
                         logging.StreamHandler()
                     ])
 locale.setlocale(locale.LC_ALL, '')
@@ -31,27 +31,35 @@ def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, *key_col
     ).explode(new_col_name).drop_nulls()
 
 def transform_title_basics(df: pl.DataFrame):
-    df = df.with_columns(pl.when(pl.col("isAdult") == 1).then(True).otherwise(False).alias("isAdult"))
-    genres_df = split_attribute(df, "genres", "genre",  "nconst")
-    df = df.drop("genres")
-    return {'title_basics': df, 'genres': genres_df}
+    return {
+        'genres' : split_attribute(df, "genres", "genre",  "nconst"),
+        'title_basics' : df.with_columns(
+            pl.when(pl.col("isAdult") == 1)
+            .then(True)
+            .otherwise(False)
+            .alias("isAdult")
+        ).drop('genres')
+    }
 
 def transform_title_akas(df: pl.DataFrame):
-    types_df = split_attribute(df, "types", "type", 'titleId', 'ordering')
-    attributes_df = split_attribute(df, "attributes", "attribute", 'titleId', 'ordering')
-    df = df.drop("attributes").drop("types")
-    return {'title_akas': df, 'types': types_df, 'attributes': attributes_df}
+    return {
+        'types' : split_attribute(df, "types", "type", 'titleId', 'ordering'),
+        'attributes': split_attribute(df, "attributes", "attribute", 'titleId', 'ordering'),
+        'title_akas' :  df.drop("attributes").drop("types")
+    }
 
 def transform_title_crew(df: pl.DataFrame):
-    directors_df = split_attribute(df, "directors", "director", 'tconst')
-    writers_df = split_attribute(df, "writers", "writer", 'tconst')
-    return {'crew_directors': directors_df, 'crew_writers': writers_df}
+    return {
+        'crew_directors': split_attribute(df, "directors", "director", 'tconst'),
+        'crew_writers': split_attribute(df, "writers", "writer", 'tconst')
+    }
 
 def transform_name_basics(df: pl.DataFrame):
-    professions = split_attribute(df, "primaryProfession", "profession", 'nconst')
-    known_for_titles = split_attribute(df, "knownForTitles", "title", 'nconst')
-    df = df.drop("primaryProfession").drop("knownForTitles")
-    return {'name_basics': df, 'knownForTitles': known_for_titles, 'primaryProfession': professions}
+    return {
+        'knownForTitles': split_attribute(df, "knownForTitles", "title", 'nconst'),
+        'primaryProfession': split_attribute(df, "primaryProfession", "profession", 'nconst'),
+        'name_basics': df.drop("primaryProfession").drop("knownForTitles")
+    }
 
 @dataclass(frozen=True)
 class Dataset:
