@@ -153,6 +153,10 @@ def create_schema(conn: sqlite3.Connection):
     logging.info(f"Created schema {db_name}")
 
 # TODO: create schema if not exists, recreate schema if already exists
+with sqlite3.connect(db_name) as conn:
+    create_schema(conn)
+
+# TODO: add partial inserts
 with tempfile.TemporaryDirectory(dir='./') as tmpdirname:
     for count, dataset in enumerate(datasets):
         logging.info(f'Starting processing for dataset {count+1}/{len(datasets)}')
