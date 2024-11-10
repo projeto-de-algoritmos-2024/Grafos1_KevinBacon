@@ -142,6 +142,8 @@ def download_and_decompress(dataset: Dataset, dir: str):
         with open(file_path, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
 
+    #cleanup
+    os.remove(archive_path)
     logging.info(f"Decompressed {archive_path}")
     return file_path
 
@@ -162,4 +164,6 @@ with tempfile.TemporaryDirectory(dir='./') as tmpdirname:
         logging.info(f'Starting processing for dataset {count+1}/{len(datasets)}')
         path = download_and_decompress(dataset, tmpdirname)
         process_and_insert(path, dataset.transform_fn)
+        logging.info(f'Cleaning up file {path}...')
+        os.remove(path)
         logging.info(f'Completed processing for dataset {count+1}/{len(datasets)}')
