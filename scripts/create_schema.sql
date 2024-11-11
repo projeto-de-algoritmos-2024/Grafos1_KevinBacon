@@ -9,6 +9,7 @@ CREATE TABLE title_basics (
     runtimeMinutes INTEGER,
     CONSTRAINT title_basics_PK PRIMARY KEY (tconst)
 );
+CREATE INDEX idx_name_basics_tconst ON title_basics(tconst);
 
 CREATE TABLE genres (
     tconst TEXT NOT NULL,
@@ -24,6 +25,7 @@ CREATE TABLE name_basics (
     deathYear INTEGER,
     CONSTRAINT name_basics_PK PRIMARY KEY (nconst)
 );
+CREATE INDEX idx_name_basics_nconst ON name_basics(nconst);
 
 CREATE TABLE primaryProfession (
     nconst TEXT NOT NULL,
