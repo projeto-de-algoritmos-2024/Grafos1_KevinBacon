@@ -12,6 +12,7 @@ from typing import Callable, Optional
 
 import polars as pl
 import requests
+from polars import Int32
 
 if len(sys.argv) < 2:
     print(f'usage {sys.argv[0]} <db_path>')
@@ -29,6 +30,12 @@ locale.setlocale(locale.LC_ALL, '')
 lines_per_chunk = 150_000
 chunks_per_batch = 15
 
+
+import polars as pl
+
+def convert_to_int(identifier: str) -> int:
+    return int(identifier[2:])
+
 def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, *key_cols) -> pl.DataFrame:
     return df.select(
         pl.col(col_name).str.split(',').alias(new_col_name),
@@ -36,9 +43,10 @@ def split_attribute(df: pl.DataFrame, col_name: str, new_col_name: str, *key_col
     ).explode(new_col_name).drop_nulls()
 
 def transform_title_basics(df: pl.DataFrame):
+    df = df.with_columns(pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32))
     return {
-        'genres' : split_attribute(df, "genres", "genre",  "tconst"),
-        'title_basics' : df.with_columns(
+        'genres': split_attribute(df, "genres", "genre", "tconst"),
+        'title_basics': df.with_columns(
             pl.when(pl.col("isAdult") == 1)
             .then(True)
             .otherwise(False)
@@ -47,23 +55,49 @@ def transform_title_basics(df: pl.DataFrame):
     }
 
 def transform_title_akas(df: pl.DataFrame):
+    df = df.with_columns(pl.col("titleId").map_elements(convert_to_int, return_dtype=pl.Int32))
     return {
-        'types' : split_attribute(df, "types", "type", 'titleId', 'ordering'),
+        'types': split_attribute(df, "types", "type", 'titleId', 'ordering'),
         'attributes': split_attribute(df, "attributes", "attribute", 'titleId', 'ordering'),
-        'title_akas' :  df.drop("attributes").drop("types")
+        'title_akas': df.drop("attributes").drop("types")
     }
 
 def transform_title_crew(df: pl.DataFrame):
+    df = df.with_columns(pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32))
     return {
-        'crew_directors': split_attribute(df, "directors", "director", 'tconst'),
+        'crew_directors': split_attribute(df, "directors", "director", 'tconst')
+        .with_columns(pl.col("director").map_elements(convert_to_int, return_dtype=pl.Int32)),
         'crew_writers': split_attribute(df, "writers", "writer", 'tconst')
+        .with_columns(pl.col("writer").map_elements(convert_to_int, return_dtype=pl.Int32)),
     }
 
 def transform_name_basics(df: pl.DataFrame):
+    df = df.with_columns(pl.col("nconst").map_elements(convert_to_int, return_dtype=pl.Int32),
+                         pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32))
     return {
         'knownForTitles': split_attribute(df, "knownForTitles", "title", 'nconst'),
         'primaryProfession': split_attribute(df, "primaryProfession", "profession", 'nconst'),
         'name_basics': df.drop("primaryProfession").drop("knownForTitles")
+    }
+
+def transform_title_episode(df: pl.DataFrame):
+    return {
+        'title_episode': df.with_columns
+        (pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32),
+         pl.col("parentTconst").map_elements(convert_to_int, return_dtype=pl.Int32))
+    }
+
+def transform_title_principals(df: pl.DataFrame):
+    return {
+        'title_principals': df.with_columns(
+            pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32),
+            pl.col("nconst").map_elements(convert_to_int, return_dtype=pl.Int32)
+        )
+    }
+
+def transform_title_ratings(df: pl.DataFrame):
+    return {
+        'title_ratings': df.with_columns(pl.col("tconst").map_elements(convert_to_int, return_dtype=pl.Int32))
     }
 
 @dataclass(frozen=True)
@@ -77,9 +111,9 @@ datasets = [
     Dataset('title_akas', 'https://datasets.imdbws.com/title.akas.tsv.gz', transform_title_akas),
     Dataset('title_basics', 'https://datasets.imdbws.com/title.basics.tsv.gz', transform_title_basics),
     Dataset('title_crew', 'https://datasets.imdbws.com/title.crew.tsv.gz', transform_title_crew),
-    Dataset('title_episode', 'https://datasets.imdbws.com/title.episode.tsv.gz'),
-    Dataset('title_principals', 'https://datasets.imdbws.com/title.principals.tsv.gz'),
-    Dataset('title_ratings', 'https://datasets.imdbws.com/title.ratings.tsv.gz')
+    Dataset('title_episode', 'https://datasets.imdbws.com/title.episode.tsv.gz', transform_title_episode),
+    Dataset('title_principals', 'https://datasets.imdbws.com/title.principals.tsv.gz', transform_title_principals),
+    Dataset('title_ratings', 'https://datasets.imdbws.com/title.ratings.tsv.gz', transform_title_ratings)
 ]
 
 def insert_table(df: pl.DataFrame, table_name:str):

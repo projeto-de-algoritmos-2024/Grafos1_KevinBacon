@@ -1,5 +1,5 @@
 CREATE TABLE title_basics (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     titleType TEXT NOT NULL,
     primaryTitle TEXT NOT NULL,
     originalTitle TEXT NOT NULL,
@@ -11,14 +11,14 @@ CREATE TABLE title_basics (
 );
 
 CREATE TABLE genres (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     genre TEXT NOT NULL,
     CONSTRAINT title_genres_UQ UNIQUE(tconst, genre),
     CONSTRAINT title_genres_title_basics_FK FOREIGN KEY (tconst) REFERENCES title_basics(tconst)
 );
 
 CREATE TABLE name_basics (
-    nconst TEXT NOT NULL,
+    nconst INTEGER NOT NULL,
     primaryName TEXT,
     birthYear INTEGER,
     deathYear INTEGER,
@@ -26,14 +26,14 @@ CREATE TABLE name_basics (
 );
 
 CREATE TABLE primaryProfession (
-    nconst TEXT NOT NULL,
+    nconst INTEGER NOT NULL,
     profession TEXT NOT NULL,
     CONSTRAINT name_professions_UK UNIQUE(nconst, profession),
     CONSTRAINT name_professions_nconst_FK FOREIGN KEY (nconst) REFERENCES name_basics(nconst)
 );
 
 CREATE TABLE knownForTitles (
-    nconst TEXT NOT NULL,
+    nconst INTEGER NOT NULL,
     title TEXT NOT NULL,
     CONSTRAINT known_for_titles_UK UNIQUE(nconst, title),
     CONSTRAINT known_for_titles_nconst_FK FOREIGN KEY (nconst) REFERENCES name_basics(nconst),
@@ -41,7 +41,7 @@ CREATE TABLE knownForTitles (
 );
 
 CREATE TABLE crew_directors (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     director TEXT NOT NULL,
     CONSTRAINT crew_directors_UK UNIQUE(tconst, director),
     CONSTRAINT crew_directors_title_basics_FK FOREIGN KEY (tconst) REFERENCES title_basics(tconst),
@@ -49,7 +49,7 @@ CREATE TABLE crew_directors (
 );
 
 CREATE TABLE crew_writers (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     writer TEXT NOT NULL,
     CONSTRAINT crew_writers_UK UNIQUE(tconst, writer),
     CONSTRAINT crew_writers_title_basics_FK FOREIGN KEY (tconst) REFERENCES title_basics(tconst),
@@ -57,7 +57,7 @@ CREATE TABLE crew_writers (
 );
 
 CREATE TABLE title_akas (
-    titleId TEXT NOT NULL,
+    titleId INTEGER NOT NULL,
     ordering INTEGER NOT NULL,
     title TEXT NOT NULL,
     region TEXT,
@@ -84,8 +84,8 @@ CREATE TABLE attributes (
 );
 
 CREATE TABLE title_episode (
-    tconst TEXT NOT NULL,
-    parentTconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
+    parentTconst INTEGER NOT NULL,
     seasonNumber INTEGER,
     episodeNumber INTEGER,
     CONSTRAINT title_episode_PK PRIMARY KEY (tconst),
@@ -94,9 +94,9 @@ CREATE TABLE title_episode (
 );
 
 CREATE TABLE title_principals (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     ordering INTEGER NOT NULL,
-    nconst TEXT NOT NULL,
+    nconst INTEGER NOT NULL,
     category TEXT NOT NULL,
     job TEXT,
     characters TEXT,
@@ -106,7 +106,7 @@ CREATE TABLE title_principals (
 );
 
 CREATE TABLE title_ratings (
-    tconst TEXT NOT NULL,
+    tconst INTEGER NOT NULL,
     averageRating REAL,
     numVotes INTEGER,
     CONSTRAINT title_ratings_PK PRIMARY KEY (tconst),
