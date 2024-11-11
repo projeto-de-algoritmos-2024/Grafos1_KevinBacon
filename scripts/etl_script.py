@@ -3,6 +3,7 @@ import logging
 import os.path
 import shutil
 import sqlite3
+import sys
 import tempfile
 import time
 from dataclasses import dataclass
@@ -12,7 +13,11 @@ from typing import Callable, Optional
 import polars as pl
 import requests
 
-db_name = 'imdb.db'
+if len(sys.argv) < 2:
+    print(f'usage {sys.argv[0]} <db_path>')
+    exit(1)
+
+db_name = sys.argv[1]
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
