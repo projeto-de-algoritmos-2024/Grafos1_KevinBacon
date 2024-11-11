@@ -19,7 +19,7 @@ CREATE TABLE genres (
 
 CREATE TABLE name_basics (
     nconst TEXT NOT NULL,
-    primaryName TEXTgg,
+    primaryName TEXT,
     birthYear INTEGER,
     deathYear INTEGER,
     CONSTRAINT name_basics_PK PRIMARY KEY (nconst)
