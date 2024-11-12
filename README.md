@@ -63,7 +63,7 @@ python etl_script.py
 
 Construção do Grafo e Busca de Caminhos:
 
-Depois de carregar os dados, utilize o script graph_generator.py para construir o grafo e realizar buscas de menor caminho entre atores:
+Depois de carregar os dados, utilize o script bfs.py para construir o grafo e realizar buscas de menor caminho entre atores:
 
 ```python
 python bfs.py
