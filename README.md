@@ -57,17 +57,17 @@ ETL e Carregamento dos Dados:
 
 O primeiro passo é rodar o script de ETL para baixar, descomprimir e carregar os dados no banco SQLite.
 
-'''python
+```python
 python etl_script.py
-'''
+```
 
 Construção do Grafo e Busca de Caminhos:
 
 Depois de carregar os dados, utilize o script graph_generator.py para construir o grafo e realizar buscas de menor caminho entre atores:
 
-'''python
+```python
 python bfs.py
-'''
+```
 
 Este procedimento criará e populará o banco de dados, construirá o grafo, e permitirá que você realize buscas de caminhos entre atores e filmes conforme descrito.
 
