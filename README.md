@@ -73,6 +73,10 @@ python bfs.py
 
 Este procedimento criará e populará o banco de dados, construirá o grafo, e permitirá que você realize buscas de caminhos entre atores e filmes conforme descrito.
 
+## Link do Vídeo de Apresentação do Projeto (YouTube)
+
+https://youtu.be/f1BlehVgcKI?si=DTPQfaIAwLJEYvWu
+
 
 
 
