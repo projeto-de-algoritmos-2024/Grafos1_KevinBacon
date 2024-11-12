@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Dict, List
 from PIL.ImageFile import ERRORS
 
 adj_list = Dict[int, List[int]]
-db_name = '../imdb.db'
+db_name = 'imdb.db'
 graph_file = 'actor_film_graph.pkl'
 
 def build_graph() -> adj_list:
