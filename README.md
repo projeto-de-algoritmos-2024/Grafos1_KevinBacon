@@ -24,7 +24,9 @@ Busca por Menor Caminho: Utilizando um algoritmo de busca em largura (BFS), o pr
 Interface com o Usuário: A navegação e visualização dos resultados pode ser feita via terminal, permitindo que o usuário interaja com o grafo e visualize o caminho calculado entre os atores.
 
 ## Screenshots
-Adicione 3 ou mais screenshots do projeto em funcionamento.
+![Screenshot 1](./images/screenshott11.jpeg)
+![Screenshot 2](./images/screenshott12.jpeg)
+![Screenshot 3](./images/screenshott13.jpeg)
 
 ## Instalação
 **Linguagem**: Python  
