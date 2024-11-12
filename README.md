@@ -66,8 +66,3 @@ Depois de carregar os dados, utilize o script graph_generator.py para construir 
 python graph_generator.py
 
 Este procedimento criará e populará o banco de dados, construirá o grafo, e permitirá que você realize buscas de caminhos entre atores e filmes conforme descrito.
-
-
-
-
-
