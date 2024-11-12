@@ -4,13 +4,13 @@
 **Conteúdo da Disciplina**: Grafos 1<br>
 
 ## Alunos
-|Matrícula | Aluno |
-| -- | -- |
-| 221007813  |  André Emanuel Bispo da Silva |
-| 221007869  |  Artur Henrique Holz Bartz |
+| Matrícula | Aluno                        |
+|-----------|------------------------------|
+| 221007813 | André Emanuel Bispo da Silva |
+| 221007869 | Artur Henrique Holz Bartz    |
 
 ## Sobre
-Este projeto tem como objetivo explorar e analisar as conexões entre filmes e atores, utilizando dados extraídos do banco de dados IMDb. A ideia é construir um grafo onde os nós representam filmes e atores, e as arestas representam suas relações (atores que atuaram juntos em um mesmo filme).
+Este projeto visa explorar e analisar as conexões entre filmes e atores, utilizando dados extraídos do banco de dados IMDb. A ideia é construir um grafo onde os nós representam filmes e atores, e as arestas representam suas relações (atores que atuaram juntos em um mesmo filme).
 
 Por meio dessa estrutura, é possível calcular caminhos e graus de separação entre atores, como no famoso exemplo de "Kevin Bacon" (Seis Graus de Kevin Bacon). O objetivo principal é identificar a menor distância entre dois atores em termos de filmes compartilhados, permitindo responder a perguntas como "Qual é a menor sequência de filmes que conecta dois atores?"
 
@@ -21,17 +21,21 @@ Construção do Grafo: Com os dados já carregados e organizados no banco, outro
 
 Busca por Menor Caminho: Utilizando um algoritmo de busca em largura (BFS), o projeto encontra o menor caminho entre dois atores, caso exista uma conexão entre eles. O algoritmo retorna tanto a distância mínima (graus de separação) quanto o caminho específico (sequência de filmes e atores).
 
-Interface com o Usuário: A navegação e visualização dos resultados pode ser feita via terminal com o uso do módulo curses do Python, permitindo que o usuário interaja com o grafo e visualize o caminho calculado entre os atores.
+Interface com o Usuário: A navegação e visualização dos resultados pode ser feita via terminal, permitindo que o usuário interaja com o grafo e visualize o caminho calculado entre os atores.
 
 ## Screenshots
 Adicione 3 ou mais screenshots do projeto em funcionamento.
 
 ## Instalação
-**Linguagem**: Python
+**Linguagem**: Python  
 **Framework**: Não há frameworks específicos; utilizamos bibliotecas padrão e populares do Python para ETL, manipulação de dados, e visualização.
 
 ### Pré Requisitos
-Antes de rodar o projeto, é necessário instalar as seguintes dependências e configurar o ambiente:
+Antes de rodar o projeto, é necessário instalar o ambiente python 3.10 ou superior e instalar as dependências presentes no arquivo requirements.txt.
+
+```shell
+pip install -r requirements.txt
+```
 
 Python 3.10 ou superior - Certifique-se de que o Python está instalado e configurado no PATH do sistema.
 
@@ -45,8 +49,6 @@ Polars - Para leitura e processamento dos arquivos .tsv de forma otimizada.
 
 Requests - Para baixar os arquivos do IMDb.
 
-curses (somente para Linux/macOS) - Para interface em terminal. Em Windows, é necessário instalar a biblioteca windows-curses para suporte a curses.
-
 ## Uso
 
 ### Configuração
@@ -57,15 +59,15 @@ ETL e Carregamento dos Dados:
 
 O primeiro passo é rodar o script de ETL para baixar, descomprimir e carregar os dados no banco SQLite.
 
-```python
+```shell
 python etl_script.py
 ```
 
 Construção do Grafo e Busca de Caminhos:
 
-Depois de carregar os dados, utilize o script bfs.py para construir o grafo e realizar buscas de menor caminho entre atores:
+Depois de carregar os dados, utilize o script ```bfs.py``` para construir o grafo e realizar buscas de menor caminho entre atores:
 
-```python
+```shell
 python bfs.py
 ```
 
